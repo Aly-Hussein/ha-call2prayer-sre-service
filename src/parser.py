@@ -1,7 +1,7 @@
 import re
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from dataclasses import dataclass, asdict
 
 TZ = ZoneInfo("America/Toronto")
 

@@ -1,4 +1,5 @@
 import pytest
+
 from parser import extract_mpt_dict, parse_day_string
 
 SAMPLE_HTML = """

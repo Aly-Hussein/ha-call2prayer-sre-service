@@ -1,0 +1,22 @@
+services:
+  call2prayer-sre:
+    build: .
+    container_name: call2prayer-sre
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - call2prayer_cache:/data
+    environment:
+      - MOSQUE_URL=https://mosqueprayertimes.com/alsalam-mtl
+      - CACHE_FILE_PATH=/data/mpt_cache.json
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  call2prayer_cache:

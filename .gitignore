@@ -16,3 +16,6 @@ venv/
 .pytest_cache/
 .coverage
 .ruff_cache/
+
+#Cache data produced as a product of local environment run and test
+local_data/

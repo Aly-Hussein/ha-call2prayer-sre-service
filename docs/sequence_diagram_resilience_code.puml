@@ -1,0 +1,66 @@
+@startuml
+!theme plain
+autonumber
+skinparam shadowing false
+skinparam defaultFontName "Inter, Segoe UI, Arial"
+skinparam sequenceMessageAlign center
+
+title Call2Prayer SRE — Daily Sync, Retry Backoff & 72-Hour Cache Degradation Flow
+
+actor "Home Assistant VM\n(call2prayer.yaml)" as HA
+participant "FastAPI Endpoint\n(main.py)" as API
+participant "Resilient Fetcher\n(fetcher.py)" as Fetcher
+database "Local Volume\n(/data/mpt_cache.json)" as Cache
+participant "Prometheus Registry\n(/metrics)" as Prom
+participant "Upstream Server\n(mosqueprayertimes.com)" as Upstream
+participant "Google Nest Speaker\n(living_room_speaker)" as Nest
+
+== Trigger 1: Scheduled 00:03:00 Sync (or HA Startup) ==
+HA -> API : GET /api/v1/today
+activate API
+API -> Fetcher : get_mpt_schedule(today_key)
+activate Fetcher
+
+Fetcher -> Cache : Check mtime & key existence
+alt Cache Hit & Fresh (< 12 Hours Old)
+    Cache --> Fetcher : Return cached MPT dict
+    Fetcher --> API : (mpt_data, "HIT_FRESH")
+else Cache Stale (> 12h) or Forced Refresh
+    
+    group Tenacity Exponential Backoff (Max 3 Attempts, 2s..10s wait)
+        Fetcher -> Upstream : HTTPS GET /alsalam-mtl (Timeout: 10s)
+    end
+
+    alt Upstream Healthy (HTTP 200 OK)
+        Upstream --> Fetcher : Raw HTML Payload (~15KB)
+        Fetcher -> Fetcher : extract_mpt_dict(html)\nValidate 56/60-char schema
+        Fetcher -> Cache : Atomic write 4-day rolling window
+        Fetcher -> Prom : Inc Counter(status="success")\nSet Gauge(degraded_mode=0)
+        Fetcher --> API : (mpt_data, "REFRESHED_UPSTREAM")
+    else Upstream Outage / 502 Bad Gateway / WAN Down
+        Upstream -x Fetcher : HTTP 5xx / Timeout Exception
+        Fetcher -> Prom : Inc Counter(status="error")\nSet Gauge(degraded_mode=1)
+        Fetcher -> Cache : Read fallback 72-hour rolling window
+        Cache --> Fetcher : Return previously cached MPT dict
+        Fetcher --> API : (mpt_data, "DEGRADED_CACHE_FALLBACK")
+    end
+end
+deactivate Fetcher
+
+API -> API : parse_day_string(today_key)\nGenerate 14 ISO-8601 Timestamps
+API --> HA : HTTP 200 OK (JSON Schedule + cache_status)
+deactivate API
+
+HA -> HA : Hydrate 14 REST Sensors\n(sensor.fajr_azan .. sensor.isha_iqama)
+
+== Trigger 2: Event-Driven Hardware Execution ==
+loop Throughout the Day (Local Event Loop — Zero WAN Dependency)
+    alt Current Time == (sensor.*_iqama - 900s)
+        HA -> Nest : script.iqama_action (Volume 70% + Play Iqama MP3)
+    else Current Time == sensor.fajr_azan
+        HA -> Nest : script.fajr_azan_action (Volume 99% + Play Fajr MP3)
+    else Current Time == sensor.{zuhr,asr,maghrib,isha}_azan
+        HA -> Nest : script.regular_azan_action (Volume 70% + Play Regular MP3)
+    end
+end
+@enduml

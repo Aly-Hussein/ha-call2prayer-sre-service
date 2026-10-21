@@ -49,9 +49,9 @@ Most smart-home prayer integrations and azan apps on phones rely on astronomical
 └───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-* **Deployment Diagram:** See [`docs/deployment_diagram.md`](docs/deployment_diagram.png) for the complete Proxmox VE, LXC firewall, and container isolation topology.
-* **Resilience Sequence Diagram:** See [`docs/sequence_diagram_resilience.md`](docs/sequence_diagram_resilience.png) for the retry, cache-fallback, and hardware trigger lifecycle.
-* **CI/CD & Contract Pipeline:** See [`docs/cicd_activity_diagram.md`](docs/cicd_activity.png) for the automated test and upstream drift detection workflow.
+* **Deployment Diagram:** See [`docs/deployment_diagram.md`](docs/deployment_diagram.md) for the complete Proxmox VE, LXC firewall, and container isolation topology.
+* **Resilience Sequence Diagram:** See [`docs/sequence_diagram_resilience.md`](docs/sequence_diagram_resilience.md) for the retry, cache-fallback, and hardware trigger lifecycle.
+* **CI/CD & Contract Pipeline:** See [`docs/cicd_activity_diagram.md`](docs/cicd_activity.md) for the automated test and upstream drift detection workflow.
 
 ---
 

@@ -1,1 +1,1 @@
-![Sequence Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/Aly-Hussein/ha-call2prayer-sre-service/refs/heads/docs/docs/sequence_diagram_resilience_code.puml)
+![Sequence Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/Aly-Hussein/ha-call2prayer-sre-service/refs/heads/main/docs/sequence_diagram_resilience_code.puml)

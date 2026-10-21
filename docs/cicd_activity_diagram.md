@@ -1,1 +1,1 @@
-![CICD Activity Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/Aly-Hussein/ha-call2prayer-sre-service/refs/heads/docs/docs/cicd_activity_diagram_code.puml)
+![CICD Activity Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/Aly-Hussein/ha-call2prayer-sre-service/refs/heads/main/docs/cicd_activity_diagram_code.puml)

@@ -1,0 +1,232 @@
+# ==============================================================================
+# Call2Prayer SRE Package (Sensors, Group, Audio Actions, and Schedules)
+# Drop this file into /config/packages/call2prayer.yaml
+# ==============================================================================
+
+# 1. REST SENSORS (Single HTTP Poll -> 14 Entities)
+rest:
+  - resource: "http://192.168.2.50:8000/api/v1/today"
+    scan_interval: 86400
+    timeout: 15
+    sensor:
+      - name: "Mosque Hijri Date"
+        unique_id: call2prayer_hijri_date
+        icon: mdi:calendar-star
+        value_template: "{{ value_json.hijri_date }}"
+        json_attributes:
+          - cache_status
+          - date
+
+      - name: "Fajr Azan"
+        unique_id: call2prayer_fajr_azan
+        device_class: timestamp
+        icon: mdi:weather-sunset-up
+        value_template: "{{ value_json.fajr_azan }}"
+
+      - name: "Fajr Iqama"
+        unique_id: call2prayer_fajr_iqama
+        device_class: timestamp
+        icon: mdi:clock-Check-outline
+        value_template: "{{ value_json.fajr_iqama }}"
+
+      - name: "Shurooq"
+        unique_id: call2prayer_shurooq
+        device_class: timestamp
+        icon: mdi:weather-sunny
+        value_template: "{{ value_json.shurooq }}"
+
+      - name: "Zuhr Azan"
+        unique_id: call2prayer_zuhr_azan
+        device_class: timestamp
+        icon: mdi:weather-sunny-alert
+        value_template: "{{ value_json.zuhr_azan }}"
+
+      - name: "Zuhr Iqama"
+        unique_id: call2prayer_zuhr_iqama
+        device_class: timestamp
+        icon: mdi:clock-check-outline
+        value_template: "{{ value_json.zuhr_iqama }}"
+
+      - name: "Asr Azan"
+        unique_id: call2prayer_asr_azan
+        device_class: timestamp
+        icon: mdi:weather-partly-cloudy
+        value_template: "{{ value_json.asr_azan }}"
+
+      - name: "Asr Iqama"
+        unique_id: call2prayer_asr_iqama
+        device_class: timestamp
+        icon: mdi:clock-check-outline
+        value_template: "{{ value_json.asr_iqama }}"
+
+      - name: "Maghrib Azan"
+        unique_id: call2prayer_maghrib_azan
+        device_class: timestamp
+        icon: mdi:weather-sunset-down
+        value_template: "{{ value_json.maghrib_azan }}"
+
+      - name: "Maghrib Iqama"
+        unique_id: call2prayer_maghrib_iqama
+        device_class: timestamp
+        icon: mdi:clock-check-outline
+        value_template: "{{ value_json.maghrib_iqama }}"
+
+      - name: "Isha Azan"
+        unique_id: call2prayer_isha_azan
+        device_class: timestamp
+        icon: mdi:weather-night
+        value_template: "{{ value_json.isha_azan }}"
+
+      - name: "Isha Iqama"
+        unique_id: call2prayer_isha_iqama
+        device_class: timestamp
+        icon: mdi:clock-check-outline
+        value_template: "{{ value_json.isha_iqama }}"
+
+      - name: "Jumah 1st Khutbah"
+        unique_id: call2prayer_jumah_1
+        device_class: timestamp
+        icon: mdi:mosque
+        value_template: "{{ value_json.jumah_1 }}"
+
+      - name: "Jumah 2nd Khutbah"
+        unique_id: call2prayer_jumah_2
+        device_class: timestamp
+        icon: mdi:mosque
+        value_template: "{{ value_json.jumah_2 }}"
+
+
+# 2. LOGICAL ENTITY GROUP (call2prayer)
+group:
+  call2prayer:
+    name: "call2prayer"
+    icon: mdi:mosque
+    entities:
+      - sensor.mosque_hijri_date
+      - sensor.fajr_azan
+      - sensor.fajr_iqama
+      - sensor.shurooq
+      - sensor.zuhr_azan
+      - sensor.zuhr_iqama
+      - sensor.asr_azan
+      - sensor.asr_iqama
+      - sensor.maghrib_azan
+      - sensor.maghrib_iqama
+      - sensor.isha_azan
+      - sensor.isha_iqama
+      - sensor.jumah_1st_khutbah
+      - sensor.jumah_2nd_khutbah
+
+
+# 3. THREE REUSABLE AUDIO ACTIONS (Scripts for Google Nest)
+# Replace 'media_player.google_nest_speaker' with your actual Google Nest entity_id
+script:
+  fajr_azan_action:
+    alias: "Fajr Azan Action"
+    icon: mdi:bullhorn
+    mode: single
+    sequence:
+      - action: media_player.volume_set
+        target:
+          entity_id: media_player.living_room_speaker
+        data:
+          volume_level: 0.99
+      - action: media_player.play_media
+        target:
+          entity_id: media_player.living_room_speaker
+        data:
+          media_content_id: "/local/call2prayer/fajr-azan-abdulbaset.mp3"
+          media_content_type: "audio/mp3"
+
+  regular_azan_action:
+    alias: "Regular Azan Action"
+    icon: mdi:bullhorn
+    mode: single
+    sequence:
+      - action: media_player.volume_set
+        target:
+          entity_id: media_player.living_room_speaker
+        data:
+          volume_level: 0.70
+      - action: media_player.play_media
+        target:
+          entity_id: media_player.living_room_speaker
+        data:
+          media_content_id: "/local/call2prayer/azan-mustafa-adawi.mp3"
+          media_content_type: "audio/mp3"
+
+  iqama_action:
+    alias: "Iqama Action"
+    icon: mdi:bell-ring
+    mode: single
+    sequence:
+      - action: media_player.volume_set
+        target:
+          entity_id: media_player.living_room_speaker
+        data:
+          volume_level: 0.70
+      - action: media_player.play_media
+        target:
+          entity_id: media_player.living_room_speaker
+        data:
+          media_content_id: "/local/call2prayer/iqama-yaser-aldowsary.mp3"
+          media_content_type: "audio/mp3"
+
+
+# 4. AUTOMATIONS (Daily Sync, Azan Triggers, and -15m Iqama Triggers)
+automation:
+  - id: call2prayer_daily_sync
+    alias: "call2prayer - Sync Mosque Prayer Times at 00:03 and Startup"
+    triggers:
+      - trigger: time
+        at: "00:03:00"
+      - trigger: homeassistant
+        event: start
+    actions:
+      - action: homeassistant.update_entity
+        target:
+          entity_id: sensor.fajr_azan
+
+  - id: call2prayer_fajr_azan_trigger
+    alias: "call2prayer - Fajr Azan Trigger"
+    triggers:
+      - trigger: time
+        at: sensor.fajr_azan
+    actions:
+      - action: script.fajr_azan_action
+
+  - id: call2prayer_regular_azan_trigger
+    alias: "call2prayer - Regular Azan Trigger (Zuhr, Asr, Maghrib, Isha)"
+    triggers:
+      - trigger: time
+        at: sensor.zuhr_azan
+      - trigger: time
+        at: sensor.asr_azan
+      - trigger: time
+        at: sensor.maghrib_azan
+      - trigger: time
+        at: sensor.isha_azan
+    actions:
+      - action: script.regular_azan_action
+
+  - id: call2prayer_iqama_15m_pre_trigger
+    alias: "call2prayer - Iqama 15 Minutes Before Trigger"
+    triggers:
+      # Fires when current time reaches (Iqama Timestamp - 900 seconds)
+      - trigger: template
+        value_template: >-
+          {{ now().timestamp() | int == (as_timestamp(states('sensor.fajr_iqama'), 0) | int - 900) }}
+      - trigger: template
+        value_template: >-
+          {{ now().timestamp() | int == (as_timestamp(states('sensor.zuhr_iqama'), 0) | int - 900) }}
+      - trigger: template
+        value_template: >-
+          {{ now().timestamp() | int == (as_timestamp(states('sensor.asr_iqama'), 0) | int - 900) }}
+      - trigger: template
+        value_template: >-
+          {{ now().timestamp() | int == (as_timestamp(states('sensor.maghrib_iqama'), 0) | int - 900) }}
+      - trigger: template
+        value_template: >-
+          {{ now().timestamp() | int == (as_timestamp(states('sensor.isha_iqama'), 0) | int - 900) }}
+    actions:
+      - action: script.iqama_action

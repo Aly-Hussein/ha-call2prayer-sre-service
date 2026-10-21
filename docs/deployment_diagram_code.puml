@@ -1,0 +1,69 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+skinparam defaultFontName "Inter, Segoe UI, Arial"
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam linetype ortho
+
+title Call2Prayer SRE — Zero-Trust Proxmox Deployment & Firewall Topology
+
+cloud "Public Internet (WAN)" as WAN {
+    node "mosqueprayertimes.com\n(As-Salam Mosque Upstream)" as Upstream <<Web Server>> {
+        artifact "Static HTML + MPT JS\n(72h Rolling Schedule)" as MPT_Payload
+    }
+}
+
+package "Home LAN (<INTERNAL_SUBNET_CIDR>)" as LAN {
+
+    node "Admin Workstation" as Admin <<Client Node>> {
+        component "SSH Client (Ed25519 Key)\n& API Inspector" as SSH_Client
+    }
+
+    node "Smart Home IoT Segment" as IoT <<Downstream Hardware>> {
+        component "Google Nest Speaker\n(living_room_speaker)" as Nest
+    }
+
+    node "Proxmox VE Bare-Metal Host (Type-1 Hypervisor)" as PVE <<Physical Host>> {
+        
+        card "Proxmox Datacenter & Host Firewall\n- Default INPUT: DROP\n- ALLOW TCP/8006, TCP/22 from <ADMIN_HOST> ONLY\n- DROP <INTERNAL_SUBNET_CIDR> to Host Mgmt" as Host_FW #FFE6E6
+
+        interface "Linux Bridge (vmbr0)\nVirtual L2 Switch" as vmbr0
+
+        node "LXC 101: Unprivileged Debian 12\n(Hostname: prayer-api.internal)" as LXC <<Linux Container>> {
+            
+            card "PVE Container Firewall (101.fw)\n- Default INPUT: DROP\n- ALLOW TCP/22 from <ADMIN_HOST>\n- ALLOW TCP/8000 from <HA_VM_HOST> & <ADMIN_HOST>\n- ALLOW Egress TCP/443, UDP/53" as LXC_FW #FFF2CC
+
+            node "Docker Engine (Isolated Namespace)" as Docker {
+                component "mosque-sre Container\n[UID: 10001 | RootFS: Read-Only | cap_drop: ALL]" as FastAPI_Container #E6F2FF {
+                    component "Uvicorn + FastAPI\n(:8000/api/v1/today)\n(:8000/healthz | :8000/metrics)" as FastAPI
+                    component "Tenacity Retry Engine\n+ MPT Regex Parser" as Fetcher
+                }
+                database "Docker Volume (/data)\nmpt_cache.json\n(72h Local Fallback)" as Cache_Vol
+            }
+        }
+
+        node "VM 100: Home Assistant OS (KVM/QEMU)\n(Hostname: haos.internal)" as HA_VM <<Virtual Machine>> {
+            component "Call2Prayer Package (/config/packages/call2prayer.yaml)\n- 14x REST Timestamp & Date Sensors\n- 00:03:00 & Startup Sync Automation\n- Azan & -15m Pre-Iqama Template Triggers\n- 3x Reusable Media Player Scripts" as HA_Core #E6FFE6
+            folder "/config/www/call2prayer/\n- fajr-azan-abdulbaset.mp3\n- azan-mustafa-adawi.mp3\n- iqama-yaser-aldowsary.mp3" as Audio_Assets
+        }
+    }
+}
+
+' Network & Firewall Relationships
+Admin -down-> Host_FW : "TCP/8006, TCP/22\n(Key-Auth Only)"
+Admin -down-> LXC_FW : "TCP/22 (SSH)\nTCP/8000 (API Test)"
+vmbr0 -down- LXC_FW
+vmbr0 -down- HA_VM
+
+' Application Flows
+HA_Core -left-> LXC_FW : "1. Daily Poll (00:03 & Boot)\nHTTP GET :8000/api/v1/today"
+LXC_FW -down-> FastAPI : "Forwards Authorised\nTCP/8000 Traffic"
+FastAPI -down-> Fetcher : "Request Today's Key"
+Fetcher -right-> Cache_Vol : "2a. Read/Write\n72h JSON State"
+Fetcher -up-> MPT_Payload : "2b. Cache Miss / Stale (>12h)\nHTTPS GET (3x Exp. Backoff)"
+
+HA_Core -down-> Audio_Assets : "3. Load Local MP3\n(/local/call2prayer/*.mp3)"
+HA_Core -up-> Nest : "4. Cast Audio Stream & Set Volume\n(Fajr: 99% | Regular/Iqama: 70%)"
+
+@enduml

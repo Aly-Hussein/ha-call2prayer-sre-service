@@ -1,0 +1,48 @@
+@startuml
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Inter, Segoe UI, Arial"
+
+title Automated CI/CD & Weekly Upstream Contract Verification Pipeline
+
+|Developer / Cron Trigger|
+start
+split
+    :Git Push / Pull Request to `main`;
+split again
+    :Scheduled GitHub Action Cron\n(Every Monday @ 06:00 UTC);
+end split
+
+|GitHub Actions Runner (Stage 1: Static & Unit Verification)|
+:Checkout Repository & Setup Python 3.12;
+:Run **Ruff** Linter (`ruff check src/ tests/`);
+if (Lint Passed?) then (no)
+    :Fail Pipeline & Block Merge;<<#FFE6E6>>
+    stop
+else (yes)
+endif
+:Run **Pytest** Unit Suite against HTML Snapshots\n(`pytest --cov=src tests/`);
+if (100% Schema Tests Passed?) then (no)
+    :Fail Pipeline & Alert Developer;<<#FFE6E6>>
+    stop
+else (yes)
+endif
+
+|GitHub Actions Runner (Stage 2: Live Contract & Container Build)|
+fork
+    :Execute Live Contract Check against\n`mosqueprayertimes.com/alsalam-mtl`;
+    :Verify `MPT={...}` Regex & 56/60-char String Slice;
+    if (Upstream DOM/JS Drifted?) then (yes)
+        :Trigger Contract Drift Alert\n(Fix Parser Before 72h Cache Expires);<<#FFF2CC>>
+        stop
+    else (no)
+    endif
+fork again
+    :Build Multi-Stage Rootless Docker Image\n(`UID 10001`, `python:3.12-slim`);
+    :Verify Image Build & Layer Integrity;
+end fork
+
+|Production Homelab (Proxmox LXC)|
+:Ready for Production Pull & Deployment;<<#E6FFE6>>
+stop
+@enduml
